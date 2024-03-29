@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	_ "github.com/lib/pq"
+	"greenlight/internal/repository"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	_ "github.com/lib/pq"
 )
 
 const version = "1.0.0"
@@ -28,6 +30,7 @@ type config struct {
 type application struct {
 	config config
 	logger *log.Logger
+	repo   repository.Repository
 }
 
 func main() {
@@ -43,12 +46,16 @@ func main() {
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
-
+	db, err := openDB(cfg)
+	if err != nil {
+		logger.Fatal(err)
+	}
 	// Declare an instance of the application struct, containing the config struct and
 	// the logger.
 	app := &application{
 		config: cfg,
 		logger: logger,
+		repo:   repository.NewRepository(db),
 	}
 
 	srv := &http.Server{
@@ -59,7 +66,7 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 	logger.Printf("starting %s server on %s", cfg.env, srv.Addr)
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	logger.Fatal(err)
 }
 
@@ -85,5 +92,4 @@ func openDB(cfg config) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
-
 }
